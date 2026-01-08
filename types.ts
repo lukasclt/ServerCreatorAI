@@ -32,10 +32,6 @@ export interface Project {
   lastOpened: number;
 }
 
-export interface User {
-  username: string;
-}
-
 export enum AppState {
   API_SETUP = 'API_SETUP', // First screen: Config API
   PROJECT_SELECT = 'PROJECT_SELECT',

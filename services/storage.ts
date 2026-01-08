@@ -1,28 +1,64 @@
-import { ApiConfig, Project, User } from '../types';
+import { ApiConfig, Project } from '../types';
 
 const CONFIG_KEY = 'server_creator_config';
 const PROJECTS_KEY = 'server_creator_projects';
-const USERS_KEY = 'server_creator_users';
+
+// Helper functions for Cookie Management
+const setCookie = (name: string, value: string, days: number = 365) => {
+  let expires = "";
+  if (days) {
+    const date = new Date();
+    date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+    expires = "; expires=" + date.toUTCString();
+  }
+  // Using SameSite=Lax for general compatibility
+  document.cookie = name + "=" + (encodeURIComponent(value) || "") + expires + "; path=/; SameSite=Lax";
+};
+
+const getCookie = (name: string): string | null => {
+  const nameEQ = name + "=";
+  const ca = document.cookie.split(';');
+  for(let i = 0; i < ca.length; i++) {
+    let c = ca[i];
+    while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+    if (c.indexOf(nameEQ) === 0) return decodeURIComponent(c.substring(nameEQ.length, c.length));
+  }
+  return null;
+};
+
+const eraseCookie = (name: string) => {   
+  document.cookie = name + '=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+};
 
 export const storageService = {
   // --- Configuration ---
   getApiConfig: (): ApiConfig | null => {
-    const stored = localStorage.getItem(CONFIG_KEY);
-    return stored ? JSON.parse(stored) : null;
+    const stored = getCookie(CONFIG_KEY);
+    try {
+      return stored ? JSON.parse(stored) : null;
+    } catch (e) {
+      console.error("Failed to parse API config cookie", e);
+      return null;
+    }
   },
 
   saveApiConfig: (config: ApiConfig) => {
-    localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
+    setCookie(CONFIG_KEY, JSON.stringify(config));
   },
 
   clearApiConfig: () => {
-    localStorage.removeItem(CONFIG_KEY);
+    eraseCookie(CONFIG_KEY);
   },
 
   // --- Projects ---
   getProjects: (): Project[] => {
-    const stored = localStorage.getItem(PROJECTS_KEY);
-    return stored ? JSON.parse(stored) : [];
+    const stored = getCookie(PROJECTS_KEY);
+    try {
+      return stored ? JSON.parse(stored) : [];
+    } catch (e) {
+      console.error("Failed to parse Projects cookie", e);
+      return [];
+    }
   },
 
   createProject: (name: string): Project => {
@@ -32,41 +68,16 @@ export const storageService = {
       name,
       lastOpened: Date.now()
     };
-    projects.push(newProject);
-    localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
+    // Cookies have size limits (~4KB). 
+    // This is fine for a demo with metadata, but would need DB for heavy data.
+    const updatedProjects = [...projects, newProject];
+    setCookie(PROJECTS_KEY, JSON.stringify(updatedProjects));
     return newProject;
   },
 
   deleteProject: (projectId: string) => {
     let projects = storageService.getProjects();
     projects = projects.filter(p => p.id !== projectId);
-    localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
-  },
-
-  // --- Auth (Mock) ---
-  register: (username: string, password: string): User => {
-    const usersStr = localStorage.getItem(USERS_KEY);
-    const users = usersStr ? JSON.parse(usersStr) : {};
-    
-    if (users[username]) {
-      throw new Error("Username already taken");
-    }
-
-    // In a real app, never store passwords like this. This is a local mock.
-    users[username] = { password };
-    localStorage.setItem(USERS_KEY, JSON.stringify(users));
-    
-    return { username };
-  },
-
-  login: (username: string, password: string): User => {
-    const usersStr = localStorage.getItem(USERS_KEY);
-    const users = usersStr ? JSON.parse(usersStr) : {};
-
-    if (!users[username] || users[username].password !== password) {
-      throw new Error("Invalid username or password");
-    }
-
-    return { username };
+    setCookie(PROJECTS_KEY, JSON.stringify(projects));
   }
 };
