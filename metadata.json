@@ -1,0 +1,5 @@
+{
+  "name": "Server Creator",
+  "description": "A powerful AI-driven tool to generate server code, plugins, and configurations directly into your local file system.",
+  "requestFramePermissions": []
+}
